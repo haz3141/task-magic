@@ -6,6 +6,7 @@ import { TodoClient } from "@/lib/types";
 const STORAGE_KEYS = {
   focusCollapsed: "whiteboard.sectionCollapsed.focus",
   laterCollapsed: "whiteboard.sectionCollapsed.later",
+  doneCollapsed: "whiteboard.sectionCollapsed.done",
 };
 
 export default function Home() {
@@ -13,19 +14,24 @@ export default function Home() {
   const [newText, setNewText] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDone, setShowDone] = useState(true);
   const [focusCollapsed, setFocusCollapsed] = useState(false);
   const [laterCollapsed, setLaterCollapsed] = useState(false);
+  const [doneCollapsed, setDoneCollapsed] = useState(true);
 
   // Load collapsed state from localStorage
   useEffect(() => {
     const storedFocusCollapsed = localStorage.getItem(STORAGE_KEYS.focusCollapsed);
     const storedLaterCollapsed = localStorage.getItem(STORAGE_KEYS.laterCollapsed);
+    const storedDoneCollapsed = localStorage.getItem(STORAGE_KEYS.doneCollapsed);
+
     if (storedFocusCollapsed !== null) {
       setFocusCollapsed(storedFocusCollapsed === "true");
     }
     if (storedLaterCollapsed !== null) {
       setLaterCollapsed(storedLaterCollapsed === "true");
+    }
+    if (storedDoneCollapsed !== null) {
+      setDoneCollapsed(storedDoneCollapsed === "true");
     }
   }, []);
 
@@ -37,6 +43,10 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.laterCollapsed, String(laterCollapsed));
   }, [laterCollapsed]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.doneCollapsed, String(doneCollapsed));
+  }, [doneCollapsed]);
 
   // Fetch todos on mount
   useEffect(() => {
@@ -294,35 +304,29 @@ export default function Home() {
             </Section>
 
             {/* Done Section */}
-            {showDone && doneTodos.length > 0 && (
-              <ul className="space-y-2 mb-6">
-                {doneTodos.map((todo) => (
-                  <TodoItem
-                    key={todo._id}
-                    todo={todo}
-                    onToggle={handleToggle}
-                    onToggleFocus={handleToggleFocus}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </ul>
-            )}
+            <Section
+              title="Done"
+              count={doneTodos.length}
+              collapsed={doneCollapsed}
+              onToggleCollapse={() => setDoneCollapsed(!doneCollapsed)}
+              emptyMessage="No completed items."
+            >
+              {doneTodos.map((todo) => (
+                <TodoItem
+                  key={todo._id}
+                  todo={todo}
+                  onToggle={handleToggle}
+                  onToggleFocus={handleToggleFocus}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </Section>
 
             {/* Footer */}
             <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400 pt-4 border-t border-zinc-200 dark:border-zinc-700">
               <div>
                 {openCount} open{doneTodos.length > 0 && `, ${doneTodos.length} done`}
               </div>
-              {doneTodos.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowDone(!showDone)}
-                  className="px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors touch-manipulation"
-                  style={{ minHeight: "44px" }}
-                >
-                  {showDone ? "Hide done" : "Show done"}
-                </button>
-              )}
             </div>
           </>
         )}
