@@ -399,8 +399,8 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection }: T
   return (
     <li
       className={`flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 rounded-lg border group ${isFocusSection
-          ? "border-l-4 border-l-amber-400 dark:border-l-amber-500 border-t-zinc-200 border-r-zinc-200 border-b-zinc-200 dark:border-t-zinc-700 dark:border-r-zinc-700 dark:border-b-zinc-700"
-          : "border-zinc-200 dark:border-zinc-700"
+        ? "border-l-4 border-l-amber-400 dark:border-l-amber-500 border-t-zinc-200 border-r-zinc-200 border-b-zinc-200 dark:border-t-zinc-700 dark:border-r-zinc-700 dark:border-b-zinc-700"
+        : "border-zinc-200 dark:border-zinc-700"
         }`}
     >
       {/* Done checkbox */}
@@ -432,8 +432,8 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection }: T
           type="button"
           onClick={() => onToggleFocus(todo._id, todo.focus)}
           className={`flex-shrink-0 p-2 transition-colors touch-manipulation ${todo.focus
-              ? "text-amber-500 hover:text-amber-600"
-              : "text-zinc-300 hover:text-amber-400 opacity-0 group-hover:opacity-100 focus:opacity-100"
+            ? "text-amber-500 hover:text-amber-600"
+            : "text-zinc-400/50 md:text-zinc-300 hover:text-amber-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
             }`}
           style={{ minWidth: "44px", minHeight: "44px" }}
           aria-label={todo.focus ? "Remove from focus" : "Add to focus"}
@@ -453,7 +453,7 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection }: T
       <button
         type="button"
         onClick={() => onDelete(todo._id)}
-        className="flex-shrink-0 p-2 text-zinc-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 touch-manipulation"
+        className="flex-shrink-0 p-2 text-zinc-400/50 md:text-zinc-400 hover:text-red-500 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 touch-manipulation"
         style={{ minWidth: "44px", minHeight: "44px" }}
         aria-label="Delete todo"
       >
