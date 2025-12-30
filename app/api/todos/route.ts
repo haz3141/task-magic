@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Todo, todoToClient } from "@/lib/types";
-import { validateText } from "@/lib/validate";
+import { validateText, validatePriority } from "@/lib/validate";
 
 // GET /api/todos - List all todos sorted: open first (createdAt desc), then done (doneAt desc)
 export async function GET() {
@@ -51,6 +51,8 @@ export async function POST(request: NextRequest) {
         const newTodo: Omit<Todo, "_id"> = {
             text: validation.text,
             done: false,
+            focus: typeof body.focus === 'boolean' ? body.focus : false,
+            priority: validatePriority(body.priority) ? body.priority : 'normal',
             createdAt: now,
             updatedAt: now,
             doneAt: null,

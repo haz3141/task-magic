@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Todo, todoToClient } from "@/lib/types";
-import { isValidObjectId } from "@/lib/validate";
+import { isValidObjectId, validatePriority } from "@/lib/validate";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
 }
 
-// PATCH /api/todos/[id] - Toggle done status
+// PATCH /api/todos/[id] - Update todo (done, focus, priority)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
@@ -18,20 +18,36 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         }
 
         const body = await request.json();
+        const now = new Date();
 
-        if (typeof body.done !== "boolean") {
-            return NextResponse.json({ error: "done must be a boolean" }, { status: 400 });
+        // Build update object dynamically based on provided fields
+        const updateData: Partial<Todo> = {
+            updatedAt: now,
+        };
+
+        // Handle done field
+        if (typeof body.done === "boolean") {
+            updateData.done = body.done;
+            updateData.doneAt = body.done ? now : null;
+        }
+
+        // Handle focus field
+        if (typeof body.focus === "boolean") {
+            updateData.focus = body.focus;
+        }
+
+        // Handle priority field
+        if (body.priority !== undefined && validatePriority(body.priority)) {
+            updateData.priority = body.priority;
+        }
+
+        // Ensure at least one field is being updated besides updatedAt
+        if (Object.keys(updateData).length === 1) {
+            return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
         }
 
         const { db } = await connectToDatabase();
         const collection = db.collection<Todo>("todos");
-
-        const now = new Date();
-        const updateData: Partial<Todo> = {
-            done: body.done,
-            updatedAt: now,
-            doneAt: body.done ? now : null,
-        };
 
         const result = await collection.findOneAndUpdate(
             { _id: new ObjectId(id) },

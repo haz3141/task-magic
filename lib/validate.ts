@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
+import { Priority } from "./types";
 
 const MAX_TEXT_LENGTH = 200;
+const VALID_PRIORITIES: readonly Priority[] = ['high', 'normal', 'low'] as const;
 
 export function validateText(text: unknown): { valid: true; text: string } | { valid: false; error: string } {
     if (typeof text !== "string") {
@@ -23,3 +25,8 @@ export function validateText(text: unknown): { valid: true; text: string } | { v
 export function isValidObjectId(id: string): boolean {
     return ObjectId.isValid(id) && new ObjectId(id).toHexString() === id;
 }
+
+export function validatePriority(priority: unknown): priority is Priority {
+    return typeof priority === 'string' && VALID_PRIORITIES.includes(priority as Priority);
+}
+
