@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { TodoClient } from "@/lib/types";
 
 const STORAGE_KEYS = {
@@ -17,6 +17,7 @@ export default function Home() {
   const [focusCollapsed, setFocusCollapsed] = useState(false);
   const [laterCollapsed, setLaterCollapsed] = useState(false);
   const [doneCollapsed, setDoneCollapsed] = useState(true);
+  const [menuOpenForId, setMenuOpenForId] = useState<string | null>(null);
 
   // Load collapsed state from localStorage
   useEffect(() => {
@@ -280,6 +281,8 @@ export default function Home() {
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
                   isFocusSection
+                  menuOpenForId={menuOpenForId}
+                  setMenuOpenForId={setMenuOpenForId}
                 />
               ))}
             </Section>
@@ -299,6 +302,8 @@ export default function Home() {
                   onToggle={handleToggle}
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
+                  menuOpenForId={menuOpenForId}
+                  setMenuOpenForId={setMenuOpenForId}
                 />
               ))}
             </Section>
@@ -318,6 +323,8 @@ export default function Home() {
                   onToggle={handleToggle}
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
+                  menuOpenForId={menuOpenForId}
+                  setMenuOpenForId={setMenuOpenForId}
                 />
               ))}
             </Section>
@@ -397,12 +404,47 @@ interface TodoItemProps {
   onToggleFocus: (id: string, focus: boolean) => void;
   onDelete: (id: string) => void;
   isFocusSection?: boolean;
+  menuOpenForId: string | null;
+  setMenuOpenForId: (id: string | null) => void;
 }
 
-function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection }: TodoItemProps) {
+function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection, menuOpenForId, setMenuOpenForId }: TodoItemProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const isMenuOpen = menuOpenForId === todo._id;
+
+  // Close menu on outside click or Escape
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    function handlePointerDown(e: PointerEvent) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
+        setMenuOpenForId(null);
+      }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMenuOpenForId(null);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMenuOpen, setMenuOpenForId]);
+
   return (
     <li
-      className={`flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 rounded-lg border group ${isFocusSection
+      className={`relative flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 rounded-lg border ${isFocusSection
         ? "border-l-4 border-l-amber-400 dark:border-l-amber-500 border-t-zinc-200 border-r-zinc-200 border-b-zinc-200 dark:border-t-zinc-700 dark:border-r-zinc-700 dark:border-b-zinc-700"
         : "border-zinc-200 dark:border-zinc-700"
         }`}
@@ -430,46 +472,58 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection }: T
         {todo.text}
       </span>
 
-      {/* Focus toggle (star) - only for open todos */}
-      {!todo.done && (
-        <button
-          type="button"
-          onClick={() => onToggleFocus(todo._id, todo.focus)}
-          className={`flex-shrink-0 p-2 transition-colors touch-manipulation ${todo.focus
-            ? "text-amber-500 hover:text-amber-600"
-            : "text-zinc-400/50 md:text-zinc-300 hover:text-amber-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
-            }`}
-          style={{ minWidth: "44px", minHeight: "44px" }}
-          aria-label={todo.focus ? "Remove from focus" : "Add to focus"}
-        >
-          <svg className="w-5 h-5" fill={todo.focus ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-            />
-          </svg>
-        </button>
+      {/* Focus indicator (display only, not clickable) */}
+      {todo.focus && !todo.done && (
+        <span className="text-amber-500 text-sm flex-shrink-0" aria-label="Focused">
+          ★
+        </span>
       )}
 
-      {/* Delete button */}
+      {/* Overflow menu button */}
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => onDelete(todo._id)}
-        className="flex-shrink-0 p-2 text-zinc-400/50 md:text-zinc-400 hover:text-red-500 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 touch-manipulation"
+        onClick={() => setMenuOpenForId(isMenuOpen ? null : todo._id)}
+        className="flex-shrink-0 p-2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors touch-manipulation"
         style={{ minWidth: "44px", minHeight: "44px" }}
-        aria-label="Delete todo"
+        aria-label="More actions"
+        aria-expanded={isMenuOpen}
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-          />
-        </svg>
+        <span className="text-xl leading-none">⋯</span>
       </button>
+
+      {/* Dropdown menu */}
+      {isMenuOpen && (
+        <div
+          ref={menuRef}
+          className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[140px]"
+        >
+          {!todo.done && (
+            <button
+              type="button"
+              onClick={() => {
+                onToggleFocus(todo._id, todo.focus);
+                setMenuOpenForId(null);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+            >
+              {todo.focus ? "Remove Focus" : "Add to Focus"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Delete this task?")) {
+                onDelete(todo._id);
+              }
+              setMenuOpenForId(null);
+            }}
+            className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+          >
+            Delete
+          </button>
+        </div>
+      )}
     </li>
   );
 }
