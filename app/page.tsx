@@ -342,7 +342,11 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 py-8 px-4">
       {/* Actor setup modal - shown once on first visit */}
       {needsSetup && !actorLoading && (
-        <ActorSetupModal onComplete={createActor} />
+        <ActorSetupModal onComplete={(actorId, name, emoji) => {
+          createActor(actorId, name, emoji);
+          // Refresh board members so assignment menu is populated immediately
+          fetchBoardMembers();
+        }} />
       )}
 
       <div className="max-w-lg mx-auto">
