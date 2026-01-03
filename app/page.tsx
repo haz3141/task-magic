@@ -685,25 +685,26 @@ function TodoItem({
           {!todo.done && !isPrivate && (
             <>
               {showAssignPicker ? (
-                <div className="px-2 py-2 border-t border-zinc-200 dark:border-zinc-700">
-                  <div className="text-xs text-zinc-500 mb-2 px-1">Assign to:</div>
-                  <div className="grid grid-cols-4 gap-1">
-                    {boardMembers.map((member) => (
+                <div className="border-t border-zinc-200 dark:border-zinc-700">
+                  <div className="text-xs text-zinc-500 px-3 pt-2 pb-1">Assign to:</div>
+                  {boardMembers.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-zinc-400">No members yet</div>
+                  ) : (
+                    boardMembers.map((member) => (
                       <button
                         key={member.actorId}
                         type="button"
                         onClick={() => onAssign(todo._id, member.actorId)}
-                        className={`w-8 h-8 text-lg rounded-lg flex items-center justify-center transition-all ${todo.assigneeActorId === member.actorId
-                          ? "bg-blue-100 dark:bg-blue-900 ring-2 ring-blue-500"
-                          : "bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-600"
+                        className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors ${todo.assigneeActorId === member.actorId
+                            ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                            : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
                           }`}
-                        aria-label={`Assign to ${member.name}`}
-                        title={member.name}
                       >
-                        {member.emoji}
+                        <span className="text-base">{member.emoji}</span>
+                        <span>{member.name || "Member"}</span>
                       </button>
-                    ))}
-                  </div>
+                    ))
+                  )}
                 </div>
               ) : (
                 <button
