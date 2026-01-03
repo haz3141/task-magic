@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { TodoClient } from "@/lib/types";
+import { useActor } from "@/lib/useActor";
+import { ActorSetupModal } from "./components/ActorSetupModal";
 
 const STORAGE_KEYS = {
   focusCollapsed: "whiteboard.sectionCollapsed.focus",
@@ -10,6 +12,7 @@ const STORAGE_KEYS = {
 };
 
 export default function Home() {
+  const { actor, isLoading: actorLoading, needsSetup, createActor } = useActor();
   const [todos, setTodos] = useState<TodoClient[]>([]);
   const [newText, setNewText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -77,10 +80,14 @@ export default function Home() {
     const tempId = `temp-${Date.now()}`;
     const optimisticTodo: TodoClient = {
       _id: tempId,
+      boardId: "home",
       text,
       done: false,
       focus: false,
       priority: "normal",
+      visibility: "shared",
+      ownerActorId: actor?.id ?? null,
+      assigneeActorId: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       doneAt: null,
@@ -93,7 +100,7 @@ export default function Home() {
       const res = await fetch("/api/todos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, ownerActorId: actor?.id ?? null }),
       });
 
       if (!res.ok) {
@@ -235,6 +242,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 py-8 px-4">
+      {/* Actor setup modal - shown once on first visit */}
+      {needsSetup && !actorLoading && (
+        <ActorSetupModal onComplete={createActor} />
+      )}
+
       <div className="max-w-lg mx-auto">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-6 text-center">
           Whiteboard Todos
