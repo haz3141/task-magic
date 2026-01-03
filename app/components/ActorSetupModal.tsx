@@ -4,7 +4,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { EmojiPicker, EMOJI_OPTIONS } from "./EmojiPicker";
 
 interface ActorSetupModalProps {
-    onComplete: (name: string, emoji: string) => void;
+    onComplete: (actorId: string, name: string, emoji: string) => void;
 }
 
 interface BoardMember {
@@ -96,7 +96,7 @@ export function ActorSetupModal({ onComplete }: ActorSetupModalProps) {
             }
 
             // Complete setup with generated ID
-            onComplete(trimmedName, emoji);
+            onComplete(actorId, trimmedName, emoji);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong");
             setIsSubmitting(false);
