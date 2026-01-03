@@ -14,10 +14,6 @@
  * - Sets assigneeActorId: null on all todos that don't have it
  */
 
-import dotenv from "dotenv";
-
-dotenv.config({ path: ".env.local" });
-
 import { MongoClient } from "mongodb";
 
 const DEFAULT_BOARD_ID = "home";
