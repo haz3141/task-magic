@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { TodoClient } from "@/lib/types";
+import { TodoClient, TaskVisibility } from "@/lib/types";
+import { useActor } from "@/lib/useActor";
+import { ActorSetupModal } from "./components/ActorSetupModal";
+
+interface BoardMember {
+  actorId: string;
+  emoji: string;
+  name: string;
+}
 
 const STORAGE_KEYS = {
   focusCollapsed: "whiteboard.sectionCollapsed.focus",
@@ -10,6 +18,7 @@ const STORAGE_KEYS = {
 };
 
 export default function Home() {
+  const { actor, isLoading: actorLoading, needsSetup, createActor } = useActor();
   const [todos, setTodos] = useState<TodoClient[]>([]);
   const [newText, setNewText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -18,6 +27,7 @@ export default function Home() {
   const [laterCollapsed, setLaterCollapsed] = useState(false);
   const [doneCollapsed, setDoneCollapsed] = useState(true);
   const [menuOpenForId, setMenuOpenForId] = useState<string | null>(null);
+  const [boardMembers, setBoardMembers] = useState<BoardMember[]>([]);
 
   // Load collapsed state from localStorage
   useEffect(() => {
@@ -52,6 +62,7 @@ export default function Home() {
   // Fetch todos on mount
   useEffect(() => {
     fetchTodos();
+    fetchBoardMembers();
   }, []);
 
   async function fetchTodos() {
@@ -68,6 +79,18 @@ export default function Home() {
     }
   }
 
+  async function fetchBoardMembers() {
+    try {
+      const res = await fetch("/api/board-members");
+      if (res.ok) {
+        const data = await res.json();
+        setBoardMembers(data.members);
+      }
+    } catch (e) {
+      console.error("Failed to fetch board members:", e);
+    }
+  }
+
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
     const text = newText.trim();
@@ -77,10 +100,14 @@ export default function Home() {
     const tempId = `temp-${Date.now()}`;
     const optimisticTodo: TodoClient = {
       _id: tempId,
+      boardId: "home",
       text,
       done: false,
       focus: false,
       priority: "normal",
+      visibility: "shared",
+      ownerActorId: actor?.id ?? null,
+      assigneeActorId: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       doneAt: null,
@@ -93,7 +120,7 @@ export default function Home() {
       const res = await fetch("/api/todos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, ownerActorId: actor?.id ?? null }),
       });
 
       if (!res.ok) {
@@ -214,16 +241,94 @@ export default function Home() {
     }
   }
 
-  // Split and sort todos
-  const focusTodos = todos
+  async function handleAssign(id: string, assigneeActorId: string | null) {
+    // Optimistic update
+    setTodos((prev) =>
+      prev.map((t) =>
+        t._id === id
+          ? { ...t, assigneeActorId, updatedAt: new Date().toISOString() }
+          : t
+      )
+    );
+    setMenuOpenForId(null);
+
+    try {
+      const res = await fetch(`/api/todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assigneeActorId }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to assign");
+      }
+      setError(null);
+    } catch {
+      // Revert on error
+      await fetchTodos();
+      setError("Failed to assign task");
+    }
+  }
+
+  async function handleToggleVisibility(id: string, currentVisibility: TaskVisibility) {
+    const newVisibility: TaskVisibility = currentVisibility === 'shared' ? 'private' : 'shared';
+
+    // Optimistic update
+    setTodos((prev) =>
+      prev.map((t) =>
+        t._id === id
+          ? {
+            ...t,
+            visibility: newVisibility,
+            // Clear assignee when making private
+            assigneeActorId: newVisibility === 'private' ? null : t.assigneeActorId,
+            updatedAt: new Date().toISOString()
+          }
+          : t
+      )
+    );
+    setMenuOpenForId(null);
+
+    try {
+      const res = await fetch(`/api/todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visibility: newVisibility,
+          // Clear assignee when making private
+          assigneeActorId: newVisibility === 'private' ? null : undefined
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update visibility");
+      }
+      setError(null);
+    } catch {
+      // Revert on error
+      await fetchTodos();
+      setError("Failed to update task visibility");
+    }
+  }
+
+  // Filter out private tasks not owned by current actor
+  const visibleTodos = todos.filter((t) => {
+    if (t.visibility === 'private' && t.ownerActorId !== actor?.id) {
+      return false;
+    }
+    return true;
+  });
+
+  // Split and sort visible todos
+  const focusTodos = visibleTodos
     .filter((t) => !t.done && t.focus)
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-  const laterTodos = todos
+  const laterTodos = visibleTodos
     .filter((t) => !t.done && !t.focus)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const doneTodos = todos
+  const doneTodos = visibleTodos
     .filter((t) => t.done)
     .sort((a, b) => {
       const aTime = a.doneAt ? new Date(a.doneAt).getTime() : new Date(a.updatedAt).getTime();
@@ -235,6 +340,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 py-8 px-4">
+      {/* Actor setup modal - shown once on first visit */}
+      {needsSetup && !actorLoading && (
+        <ActorSetupModal onComplete={(actorId, name, emoji) => {
+          createActor(actorId, name, emoji);
+          // Refresh board members so assignment menu is populated immediately
+          fetchBoardMembers();
+        }} />
+      )}
+
       <div className="max-w-lg mx-auto">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-6 text-center">
           Whiteboard Todos
@@ -277,9 +391,13 @@ export default function Home() {
                 <TodoItem
                   key={todo._id}
                   todo={todo}
+                  actor={actor}
+                  boardMembers={boardMembers}
                   onToggle={handleToggle}
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
+                  onAssign={handleAssign}
+                  onToggleVisibility={handleToggleVisibility}
                   isFocusSection
                   menuOpenForId={menuOpenForId}
                   setMenuOpenForId={setMenuOpenForId}
@@ -299,9 +417,13 @@ export default function Home() {
                 <TodoItem
                   key={todo._id}
                   todo={todo}
+                  actor={actor}
+                  boardMembers={boardMembers}
                   onToggle={handleToggle}
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
+                  onAssign={handleAssign}
+                  onToggleVisibility={handleToggleVisibility}
                   menuOpenForId={menuOpenForId}
                   setMenuOpenForId={setMenuOpenForId}
                 />
@@ -320,9 +442,13 @@ export default function Home() {
                 <TodoItem
                   key={todo._id}
                   todo={todo}
+                  actor={actor}
+                  boardMembers={boardMembers}
                   onToggle={handleToggle}
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
+                  onAssign={handleAssign}
+                  onToggleVisibility={handleToggleVisibility}
                   menuOpenForId={menuOpenForId}
                   setMenuOpenForId={setMenuOpenForId}
                 />
@@ -400,22 +526,49 @@ function Section({ title, count, collapsed, onToggleCollapse, emptyMessage, chil
 // TodoItem component
 interface TodoItemProps {
   todo: TodoClient;
+  actor: { id: string; emoji: string } | null;
+  boardMembers: BoardMember[];
   onToggle: (id: string, done: boolean) => void;
   onToggleFocus: (id: string, focus: boolean) => void;
   onDelete: (id: string) => void;
+  onAssign: (id: string, assigneeActorId: string | null) => void;
+  onToggleVisibility: (id: string, visibility: TaskVisibility) => void;
   isFocusSection?: boolean;
   menuOpenForId: string | null;
   setMenuOpenForId: (id: string | null) => void;
 }
 
-function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection, menuOpenForId, setMenuOpenForId }: TodoItemProps) {
+function TodoItem({
+  todo,
+  actor,
+  boardMembers,
+  onToggle,
+  onToggleFocus,
+  onDelete,
+  onAssign,
+  onToggleVisibility,
+  isFocusSection,
+  menuOpenForId,
+  setMenuOpenForId
+}: TodoItemProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const isMenuOpen = menuOpenForId === todo._id;
+  const [showAssignPicker, setShowAssignPicker] = useState(false);
+
+  // Find assignee's emoji
+  const assigneeEmoji = todo.assigneeActorId
+    ? boardMembers.find(m => m.actorId === todo.assigneeActorId)?.emoji
+    : null;
+
+  const isPrivate = todo.visibility === 'private';
+  const isOwner = todo.ownerActorId === actor?.id;
 
   // Close menu on outside click or Escape
   useEffect(() => {
-    if (!isMenuOpen) return;
+    if (!isMenuOpen) {
+      return;
+    }
 
     function handlePointerDown(e: PointerEvent) {
       if (
@@ -425,12 +578,14 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection, men
         !buttonRef.current.contains(e.target as Node)
       ) {
         setMenuOpenForId(null);
+        setShowAssignPicker(false);
       }
     }
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setMenuOpenForId(null);
+        setShowAssignPicker(false);
       }
     }
 
@@ -472,6 +627,20 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection, men
         {todo.text}
       </span>
 
+      {/* Private indicator (display only) */}
+      {isPrivate && isOwner && (
+        <span className="text-zinc-400 text-sm flex-shrink-0" aria-label="Private">
+          🔒
+        </span>
+      )}
+
+      {/* Assignee emoji indicator (display only) */}
+      {assigneeEmoji && !todo.done && (
+        <span className="text-sm flex-shrink-0" aria-label="Assigned">
+          {assigneeEmoji}
+        </span>
+      )}
+
       {/* Focus indicator (display only, not clickable) */}
       {todo.focus && !todo.done && (
         <span className="text-amber-500 text-sm flex-shrink-0" aria-label="Focused">
@@ -496,8 +665,9 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection, men
       {isMenuOpen && (
         <div
           ref={menuRef}
-          className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[140px]"
+          className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[160px]"
         >
+          {/* Focus toggle */}
           {!todo.done && (
             <button
               type="button"
@@ -510,6 +680,67 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection, men
               {todo.focus ? "Remove Focus" : "Add to Focus"}
             </button>
           )}
+
+          {/* Assignment actions - only for shared tasks */}
+          {!todo.done && !isPrivate && (
+            <>
+              {showAssignPicker ? (
+                <div className="border-t border-zinc-200 dark:border-zinc-700">
+                  <div className="text-xs text-zinc-500 px-3 pt-2 pb-1">Assign to:</div>
+                  {boardMembers.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-zinc-400">No members yet</div>
+                  ) : (
+                    boardMembers.map((member) => (
+                      <button
+                        key={member.actorId}
+                        type="button"
+                        onClick={() => onAssign(todo._id, member.actorId)}
+                        className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors ${todo.assigneeActorId === member.actorId
+                            ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                            : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                          }`}
+                      >
+                        <span className="text-base">{member.emoji}</span>
+                        <span>{member.name || "Member"}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAssignPicker(true)}
+                  className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                >
+                  Assign to…
+                </button>
+              )}
+
+              {/* Unassign action */}
+              {todo.assigneeActorId && !showAssignPicker && (
+                <button
+                  type="button"
+                  onClick={() => onAssign(todo._id, null)}
+                  className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                >
+                  Unassign
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Visibility toggle - only for owner or shared tasks */}
+          {!todo.done && (isOwner || !isPrivate) && (
+            <button
+              type="button"
+              onClick={() => onToggleVisibility(todo._id, todo.visibility)}
+              className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border-t border-zinc-200 dark:border-zinc-700"
+            >
+              {isPrivate ? "Make shared" : "Make private"}
+            </button>
+          )}
+
+          {/* Delete action */}
           <button
             type="button"
             onClick={() => {
@@ -518,7 +749,7 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection, men
               }
               setMenuOpenForId(null);
             }}
-            className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+            className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border-t border-zinc-200 dark:border-zinc-700"
           >
             Delete
           </button>
@@ -527,3 +758,4 @@ function TodoItem({ todo, onToggle, onToggleFocus, onDelete, isFocusSection, men
     </li>
   );
 }
+

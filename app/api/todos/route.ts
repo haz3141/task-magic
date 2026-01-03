@@ -2,15 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Todo, todoToClient } from "@/lib/types";
 import { validateText, validatePriority } from "@/lib/validate";
+import { DEFAULT_BOARD_ID, initDefaultBoard } from "@/lib/board";
 
-// GET /api/todos - List all todos sorted: open first (createdAt desc), then done (doneAt desc)
+// GET /api/todos - List all todos for the default board, sorted: open first (createdAt desc), then done (doneAt desc)
 export async function GET() {
     try {
         const { db } = await connectToDatabase();
+
+        // Ensure default board exists
+        await initDefaultBoard(db);
+
         const collection = db.collection<Todo>("todos");
 
-        // Fetch all todos
-        const todos = await collection.find({}).toArray();
+        // Fetch todos for the default board (also include legacy todos without boardId)
+        const todos = await collection.find({
+            $or: [
+                { boardId: DEFAULT_BOARD_ID },
+                { boardId: { $exists: false } }
+            ]
+        }).toArray();
 
         // Sort: open items first (newest first), done items after (newest-done first)
         const openTodos = todos
@@ -45,14 +55,22 @@ export async function POST(request: NextRequest) {
         }
 
         const { db } = await connectToDatabase();
+
+        // Ensure default board exists
+        await initDefaultBoard(db);
+
         const collection = db.collection<Todo>("todos");
 
         const now = new Date();
         const newTodo: Omit<Todo, "_id"> = {
+            boardId: DEFAULT_BOARD_ID,
             text: validation.text,
             done: false,
             focus: typeof body.focus === 'boolean' ? body.focus : false,
             priority: validatePriority(body.priority) ? body.priority : 'normal',
+            visibility: 'shared',
+            ownerActorId: typeof body.ownerActorId === 'string' ? body.ownerActorId : null,
+            assigneeActorId: null,
             createdAt: now,
             updatedAt: now,
             doneAt: null,
@@ -67,3 +85,4 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to create todo" }, { status: 500 });
     }
 }
+

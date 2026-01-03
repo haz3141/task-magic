@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
-import { Todo, todoToClient } from "@/lib/types";
+import { Todo, todoToClient, TaskVisibility } from "@/lib/types";
 import { isValidObjectId, validatePriority } from "@/lib/validate";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
 }
 
-// PATCH /api/todos/[id] - Update todo (done, focus, priority)
+// Valid visibility values
+const VALID_VISIBILITIES: readonly TaskVisibility[] = ['shared', 'private'] as const;
+
+function validateVisibility(value: unknown): value is TaskVisibility {
+    return typeof value === 'string' && VALID_VISIBILITIES.includes(value as TaskVisibility);
+}
+
+// PATCH /api/todos/[id] - Update todo (done, focus, priority, visibility, assigneeActorId)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
     try {
         const { id } = await params;
@@ -39,6 +46,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         // Handle priority field
         if (body.priority !== undefined && validatePriority(body.priority)) {
             updateData.priority = body.priority;
+        }
+
+        // Handle visibility field
+        if (body.visibility !== undefined && validateVisibility(body.visibility)) {
+            updateData.visibility = body.visibility;
+        }
+
+        // Handle assigneeActorId field (can be string or null)
+        if (body.assigneeActorId !== undefined) {
+            if (body.assigneeActorId === null || typeof body.assigneeActorId === 'string') {
+                updateData.assigneeActorId = body.assigneeActorId;
+            }
         }
 
         // Ensure at least one field is being updated besides updatedAt
