@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Todo, todoToClient, TaskVisibility } from "@/lib/types";
-import { isValidObjectId, validatePriority } from "@/lib/validate";
+import { isValidObjectId, validatePriority, validateText } from "@/lib/validate";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -63,6 +63,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         // Handle order field
         if (typeof body.order === 'number') {
             updateData.order = body.order;
+        }
+
+        // Handle text field
+        if (body.text !== undefined) {
+            const validation = validateText(body.text);
+            if (!validation.valid) {
+                return NextResponse.json({ error: validation.error }, { status: 400 });
+            }
+            updateData.text = validation.text;
         }
 
         // Ensure at least one field is being updated besides updatedAt
