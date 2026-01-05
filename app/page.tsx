@@ -28,6 +28,7 @@ export default function Home() {
   const [doneCollapsed, setDoneCollapsed] = useState(true);
   const [menuOpenForId, setMenuOpenForId] = useState<string | null>(null);
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>([]);
+  const [confirmDeleteTodoId, setConfirmDeleteTodoId] = useState<string | null>(null);
 
   // Load collapsed state from localStorage
   useEffect(() => {
@@ -453,6 +454,7 @@ export default function Home() {
                   onToggle={handleToggle}
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
+                  onRequestDelete={setConfirmDeleteTodoId}
                   onAssign={handleAssign}
                   onToggleVisibility={handleToggleVisibility}
                   onMoveUp={() => handleMove(todo._id, 'up', focusTodos)}
@@ -483,6 +485,7 @@ export default function Home() {
                   onToggle={handleToggle}
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
+                  onRequestDelete={setConfirmDeleteTodoId}
                   onAssign={handleAssign}
                   onToggleVisibility={handleToggleVisibility}
                   onMoveUp={() => handleMove(todo._id, 'up', laterTodos)}
@@ -512,6 +515,7 @@ export default function Home() {
                   onToggle={handleToggle}
                   onToggleFocus={handleToggleFocus}
                   onDelete={handleDelete}
+                  onRequestDelete={setConfirmDeleteTodoId}
                   onAssign={handleAssign}
                   onToggleVisibility={handleToggleVisibility}
                   menuOpenForId={menuOpenForId}
@@ -529,6 +533,50 @@ export default function Home() {
           </>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteTodoId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setConfirmDeleteTodoId(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setConfirmDeleteTodoId(null);
+            }
+          }}
+        >
+          <div
+            className="bg-white dark:bg-zinc-800 rounded-lg shadow-xl p-6 max-w-sm w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+              Delete task?
+            </h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteTodoId(null)}
+                className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleDelete(confirmDeleteTodoId);
+                  setConfirmDeleteTodoId(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -596,6 +644,7 @@ interface TodoItemProps {
   onToggle: (id: string, done: boolean) => void;
   onToggleFocus: (id: string, focus: boolean) => void;
   onDelete: (id: string) => void;
+  onRequestDelete: (id: string) => void;
   onAssign: (id: string, assigneeActorId: string | null) => void;
   onToggleVisibility: (id: string, visibility: TaskVisibility) => void;
   onMoveUp?: () => void;
@@ -614,6 +663,7 @@ function TodoItem({
   onToggle,
   onToggleFocus,
   onDelete,
+  onRequestDelete,
   onAssign,
   onToggleVisibility,
   onMoveUp,
@@ -837,10 +887,8 @@ function TodoItem({
           <button
             type="button"
             onClick={() => {
-              if (window.confirm("Delete this task?")) {
-                onDelete(todo._id);
-              }
               setMenuOpenForId(null);
+              onRequestDelete(todo._id);
             }}
             className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border-t border-zinc-200 dark:border-zinc-700"
           >
