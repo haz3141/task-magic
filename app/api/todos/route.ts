@@ -22,10 +22,14 @@ export async function GET() {
             ]
         }).toArray();
 
-        // Sort: open items first (newest first), done items after (newest-done first)
+        // Sort: open items first (by order ascending, createdAt fallback), done items after (newest-done first)
         const openTodos = todos
             .filter((t) => !t.done)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            .sort((a, b) => {
+                const aOrder = a.order ?? new Date(a.createdAt).getTime();
+                const bOrder = b.order ?? new Date(b.createdAt).getTime();
+                return aOrder - bOrder;
+            });
 
         const doneTodos = todos
             .filter((t) => t.done)
@@ -71,6 +75,7 @@ export async function POST(request: NextRequest) {
             visibility: 'shared',
             ownerActorId: typeof body.ownerActorId === 'string' ? body.ownerActorId : null,
             assigneeActorId: null,
+            order: Date.now(),
             createdAt: now,
             updatedAt: now,
             doneAt: null,
