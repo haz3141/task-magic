@@ -60,6 +60,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             }
         }
 
+        // Handle order field
+        if (typeof body.order === 'number') {
+            updateData.order = body.order;
+        }
+
         // Ensure at least one field is being updated besides updatedAt
         if (Object.keys(updateData).length === 1) {
             return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });

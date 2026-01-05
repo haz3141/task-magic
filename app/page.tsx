@@ -311,6 +311,55 @@ export default function Home() {
     }
   }
 
+  // Handle move up/down within a section by swapping order values
+  async function handleMove(id: string, direction: 'up' | 'down', sectionTodos: TodoClient[]) {
+    const idx = sectionTodos.findIndex(t => t._id === id);
+    if (idx === -1) return;
+
+    const neighborIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (neighborIdx < 0 || neighborIdx >= sectionTodos.length) return;
+
+    const task = sectionTodos[idx];
+    const neighbor = sectionTodos[neighborIdx];
+
+    // Get order values (fallback to createdAt timestamp if not set)
+    const taskOrder = task.order ?? Date.parse(task.createdAt);
+    const neighborOrder = neighbor.order ?? Date.parse(neighbor.createdAt);
+
+    // Optimistic update: swap order values
+    setTodos(prev => prev.map(t => {
+      if (t._id === task._id) return { ...t, order: neighborOrder };
+      if (t._id === neighbor._id) return { ...t, order: taskOrder };
+      return t;
+    }));
+    setMenuOpenForId(null);
+
+    // Persist both changes
+    try {
+      const [res1, res2] = await Promise.all([
+        fetch(`/api/todos/${task._id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: neighborOrder }),
+        }),
+        fetch(`/api/todos/${neighbor._id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: taskOrder }),
+        }),
+      ]);
+
+      if (!res1.ok || !res2.ok) {
+        throw new Error('Failed to update order');
+      }
+      setError(null);
+    } catch {
+      // Revert on error by refetching
+      await fetchTodos();
+      setError('Failed to reorder task');
+    }
+  }
+
   // Filter out private tasks not owned by current actor
   const visibleTodos = todos.filter((t) => {
     if (t.visibility === 'private' && t.ownerActorId !== actor?.id) {
@@ -319,14 +368,22 @@ export default function Home() {
     return true;
   });
 
-  // Split and sort visible todos
+  // Split and sort visible todos (by order ascending, with createdAt fallback)
   const focusTodos = visibleTodos
     .filter((t) => !t.done && t.focus)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    .sort((a, b) => {
+      const aOrder = a.order ?? Date.parse(a.createdAt);
+      const bOrder = b.order ?? Date.parse(b.createdAt);
+      return aOrder - bOrder;
+    });
 
   const laterTodos = visibleTodos
     .filter((t) => !t.done && !t.focus)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => {
+      const aOrder = a.order ?? Date.parse(a.createdAt);
+      const bOrder = b.order ?? Date.parse(b.createdAt);
+      return aOrder - bOrder;
+    });
 
   const doneTodos = visibleTodos
     .filter((t) => t.done)
@@ -387,7 +444,7 @@ export default function Home() {
               emptyMessage="No focus items. Star a task to keep it at the top."
               isFocusSection
             >
-              {focusTodos.map((todo) => (
+              {focusTodos.map((todo, idx) => (
                 <TodoItem
                   key={todo._id}
                   todo={todo}
@@ -398,6 +455,10 @@ export default function Home() {
                   onDelete={handleDelete}
                   onAssign={handleAssign}
                   onToggleVisibility={handleToggleVisibility}
+                  onMoveUp={() => handleMove(todo._id, 'up', focusTodos)}
+                  onMoveDown={() => handleMove(todo._id, 'down', focusTodos)}
+                  canMoveUp={idx > 0}
+                  canMoveDown={idx < focusTodos.length - 1}
                   isFocusSection
                   menuOpenForId={menuOpenForId}
                   setMenuOpenForId={setMenuOpenForId}
@@ -413,7 +474,7 @@ export default function Home() {
               onToggleCollapse={() => setLaterCollapsed(!laterCollapsed)}
               emptyMessage="No items in parking lot."
             >
-              {laterTodos.map((todo) => (
+              {laterTodos.map((todo, idx) => (
                 <TodoItem
                   key={todo._id}
                   todo={todo}
@@ -424,6 +485,10 @@ export default function Home() {
                   onDelete={handleDelete}
                   onAssign={handleAssign}
                   onToggleVisibility={handleToggleVisibility}
+                  onMoveUp={() => handleMove(todo._id, 'up', laterTodos)}
+                  onMoveDown={() => handleMove(todo._id, 'down', laterTodos)}
+                  canMoveUp={idx > 0}
+                  canMoveDown={idx < laterTodos.length - 1}
                   menuOpenForId={menuOpenForId}
                   setMenuOpenForId={setMenuOpenForId}
                 />
@@ -533,6 +598,10 @@ interface TodoItemProps {
   onDelete: (id: string) => void;
   onAssign: (id: string, assigneeActorId: string | null) => void;
   onToggleVisibility: (id: string, visibility: TaskVisibility) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   isFocusSection?: boolean;
   menuOpenForId: string | null;
   setMenuOpenForId: (id: string | null) => void;
@@ -547,6 +616,10 @@ function TodoItem({
   onDelete,
   onAssign,
   onToggleVisibility,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
   isFocusSection,
   menuOpenForId,
   setMenuOpenForId
@@ -681,6 +754,26 @@ function TodoItem({
             </button>
           )}
 
+          {/* Move up/down actions - only for non-done tasks */}
+          {!todo.done && canMoveUp && onMoveUp && (
+            <button
+              type="button"
+              onClick={onMoveUp}
+              className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+            >
+              Move up
+            </button>
+          )}
+          {!todo.done && canMoveDown && onMoveDown && (
+            <button
+              type="button"
+              onClick={onMoveDown}
+              className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+            >
+              Move down
+            </button>
+          )}
+
           {/* Assignment actions - only for shared tasks */}
           {!todo.done && !isPrivate && (
             <>
@@ -696,8 +789,8 @@ function TodoItem({
                         type="button"
                         onClick={() => onAssign(todo._id, member.actorId)}
                         className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors ${todo.assigneeActorId === member.actorId
-                            ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                            : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                          : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
                           }`}
                       >
                         <span className="text-base">{member.emoji}</span>

@@ -14,6 +14,7 @@ export interface Todo {
     visibility: TaskVisibility;
     ownerActorId: string | null;
     assigneeActorId: string | null;
+    order?: number;
     createdAt: Date;
     updatedAt: Date;
     doneAt: Date | null;
@@ -30,6 +31,7 @@ export interface TodoClient {
     visibility: TaskVisibility;
     ownerActorId: string | null;
     assigneeActorId: string | null;
+    order?: number;
     createdAt: string;
     updatedAt: string;
     doneAt: string | null;
@@ -47,6 +49,7 @@ export function todoToClient(todo: Partial<Todo> & { _id: ObjectId; text: string
         visibility: todo.visibility ?? 'shared',
         ownerActorId: todo.ownerActorId ?? null,
         assigneeActorId: todo.assigneeActorId ?? null,
+        order: todo.order,
         createdAt: todo.createdAt.toISOString(),
         updatedAt: todo.updatedAt.toISOString(),
         doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
