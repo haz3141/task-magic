@@ -1,5 +1,6 @@
 /**
  * Actor represents an identity. Today it is device-local; later it becomes an authenticated user.
+ * These types are client-safe (no mongodb dependencies).
  */
 
 export interface Actor {

@@ -1,11 +1,10 @@
-import { ObjectId, Db } from "mongodb";
-
 /**
- * Board represents a whiteboard. Today only one exists; later many can exist.
+ * Server-side Board types and utilities.
+ * Uses mongodb ObjectId/Db - must only be imported in server contexts.
  */
 
-export type BoardVisibility = 'shared' | 'private';
-export type BoardMemberRole = 'owner' | 'member';
+import { ObjectId, Db } from "mongodb";
+import { BoardVisibility, BoardClient, DEFAULT_BOARD_ID, DEFAULT_BOARD_NAME } from "../shared/types/board";
 
 export interface Board {
     _id: ObjectId;
@@ -16,25 +15,12 @@ export interface Board {
     createdAt: Date;
 }
 
-export interface BoardMember {
+export interface BoardMemberDb {
     _id: ObjectId;
     boardId: string;
     actorId: string;
-    role: BoardMemberRole;
+    role: 'owner' | 'member';
 }
-
-// Client-safe version
-export interface BoardClient {
-    id: string;
-    name: string;
-    ownerActorId: string | null;
-    visibility: BoardVisibility;
-    createdAt: string;
-}
-
-// Default board ID constant - used for the single "Home" board
-export const DEFAULT_BOARD_ID = 'home';
-export const DEFAULT_BOARD_NAME = 'Home';
 
 /**
  * Initialize the default board if it doesn't exist.

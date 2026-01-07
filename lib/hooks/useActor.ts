@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ActorClient, ACTOR_STORAGE_KEY } from "./actor";
+import { ActorClient, ACTOR_STORAGE_KEY } from "../shared/types/actor";
 
 interface StoredActor {
     id: string;
@@ -73,4 +73,3 @@ export function useActor(): UseActorResult {
         createActor,
     };
 }
-

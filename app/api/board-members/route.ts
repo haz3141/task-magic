@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import { DEFAULT_BOARD_ID } from "@/lib/board";
+import { connectToDatabase } from "@/lib/server/db/mongodb";
+import { DEFAULT_BOARD_ID } from "@/lib/shared/types/board";
 
 interface BoardMemberDoc {
     boardId: string;
