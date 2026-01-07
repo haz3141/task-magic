@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { TodoClient, TaskVisibility } from "@/lib/types";
 import { useActor } from "@/lib/useActor";
-import { ActorSetupModal } from "./components/ActorSetupModal";
+import { ActorSetupModal } from "@/components/ActorSetupModal";
 import { Section } from "@/components/Section";
 import { TodoItem } from "@/components/TodoItem";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";

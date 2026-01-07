@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { EmojiPicker, EMOJI_OPTIONS } from "./EmojiPicker";
+import { EmojiPicker, EMOJI_OPTIONS } from "@/components/EmojiPicker";
 
 interface ActorSetupModalProps {
     onComplete: (actorId: string, name: string, emoji: string) => void;
