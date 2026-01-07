@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { TodoClient, TaskVisibility } from "@/lib/types";
 import { useActor } from "@/lib/useActor";
 import { ActorSetupModal } from "./components/ActorSetupModal";
-
-interface BoardMember {
-  actorId: string;
-  emoji: string;
-  name: string;
-}
+import { Section } from "@/components/Section";
+import { TodoItem } from "@/components/TodoItem";
+import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
+import { EditTaskModal } from "@/components/EditTaskModal";
+import { AddTodoForm } from "@/components/AddTodoForm";
+import { ErrorBanner } from "@/components/ErrorBanner";
+import { BoardMember } from "@/components/types";
 
 const STORAGE_KEYS = {
   focusCollapsed: "whiteboard.sectionCollapsed.focus",
@@ -404,6 +405,12 @@ export default function Home() {
     }
   }
 
+  // Handle form submission
+  function handleFormSubmit() {
+    const event = { preventDefault: () => { } } as FormEvent;
+    handleAdd(event);
+  }
+
   // Filter out private tasks not owned by current actor
   const visibleTodos = todos.filter((t) => {
     if (t.visibility === 'private' && t.ownerActorId !== actor?.id) {
@@ -456,23 +463,14 @@ export default function Home() {
         </h1>
 
         {/* Add form */}
-        <form onSubmit={handleAdd} className="mb-6">
-          <input
-            type="text"
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            placeholder="Add a todo..."
-            maxLength={200}
-            className="w-full px-4 py-3 text-lg rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </form>
+        <AddTodoForm
+          value={newText}
+          onChange={setNewText}
+          onSubmit={handleFormSubmit}
+        />
 
         {/* Error message */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
+        {error && <ErrorBanner message={error} />}
 
         {/* Loading state */}
         {loading ? (
@@ -582,434 +580,23 @@ export default function Home() {
 
       {/* Delete Confirmation Modal */}
       {confirmDeleteTodoId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setConfirmDeleteTodoId(null)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setConfirmDeleteTodoId(null);
-            }
+        <ConfirmDeleteModal
+          onCancel={() => setConfirmDeleteTodoId(null)}
+          onConfirm={() => {
+            handleDelete(confirmDeleteTodoId);
+            setConfirmDeleteTodoId(null);
           }}
-        >
-          <div
-            className="bg-white dark:bg-zinc-800 rounded-lg shadow-xl p-6 max-w-sm w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
-              Delete task?
-            </h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
-              This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteTodoId(null)}
-                className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  handleDelete(confirmDeleteTodoId);
-                  setConfirmDeleteTodoId(null);
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        />
       )}
 
       {/* Edit Task Modal */}
       {editTodoId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => { setEditTodoId(null); setEditText(""); }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setEditTodoId(null);
-              setEditText("");
-            }
-          }}
-        >
-          <div
-            className="bg-white dark:bg-zinc-800 rounded-lg shadow-xl p-6 max-w-sm w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-              Edit task
-            </h2>
-            <input
-              type="text"
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && editText.trim()) {
-                  handleUpdateText(editTodoId, editText);
-                }
-              }}
-              maxLength={200}
-              autoFocus
-              className="w-full px-3 py-2 text-base rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
-            />
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => { setEditTodoId(null); setEditText(""); }}
-                className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateText(editTodoId, editText)}
-                disabled={!editText.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditTaskModal
+          initialText={editText}
+          onCancel={() => { setEditTodoId(null); setEditText(""); }}
+          onSave={(text) => handleUpdateText(editTodoId, text)}
+        />
       )}
     </div>
   );
 }
-
-// Section component for collapsible groups
-interface SectionProps {
-  title: string;
-  count: number;
-  collapsed: boolean;
-  onToggleCollapse: () => void;
-  emptyMessage: string;
-  children: React.ReactNode;
-  isFocusSection?: boolean;
-}
-
-function Section({ title, count, collapsed, onToggleCollapse, emptyMessage, children, isFocusSection }: SectionProps) {
-  const hasItems = count > 0;
-
-  return (
-    <div className="mb-4">
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors touch-manipulation"
-        style={{ minHeight: "44px" }}
-        aria-expanded={!collapsed}
-        aria-label={`${title} section, ${count} items`}
-      >
-        <div className="flex items-center gap-2">
-          <svg
-            className={`w-4 h-4 text-zinc-500 transition-transform ${collapsed ? "" : "rotate-90"}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-          <span className={`font-medium ${isFocusSection ? "text-amber-600 dark:text-amber-400" : "text-zinc-700 dark:text-zinc-300"}`}>
-            {title}
-          </span>
-        </div>
-        <span className="text-xs bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded-full">
-          {count}
-        </span>
-      </button>
-
-      {!collapsed && (
-        <ul className="mt-2 space-y-2">
-          {hasItems ? (
-            children
-          ) : (
-            <li className="text-center py-4 text-zinc-400 text-sm">{emptyMessage}</li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-// TodoItem component
-interface TodoItemProps {
-  todo: TodoClient;
-  actor: { id: string; emoji: string } | null;
-  boardMembers: BoardMember[];
-  onToggle: (id: string, done: boolean) => void;
-  onToggleFocus: (id: string, focus: boolean) => void;
-  onDelete: (id: string) => void;
-  onRequestDelete: (id: string) => void;
-  onEdit: (id: string, currentText: string) => void;
-  onAssign: (id: string, assigneeActorId: string | null) => void;
-  onToggleVisibility: (id: string, visibility: TaskVisibility) => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
-  canMoveUp?: boolean;
-  canMoveDown?: boolean;
-  isFocusSection?: boolean;
-  menuOpenForId: string | null;
-  setMenuOpenForId: (id: string | null) => void;
-}
-
-function TodoItem({
-  todo,
-  actor,
-  boardMembers,
-  onToggle,
-  onToggleFocus,
-  onDelete,
-  onRequestDelete,
-  onEdit,
-  onAssign,
-  onToggleVisibility,
-  onMoveUp,
-  onMoveDown,
-  canMoveUp,
-  canMoveDown,
-  isFocusSection,
-  menuOpenForId,
-  setMenuOpenForId
-}: TodoItemProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const isMenuOpen = menuOpenForId === todo._id;
-  const [showAssignPicker, setShowAssignPicker] = useState(false);
-
-  // Find assignee's emoji
-  const assigneeEmoji = todo.assigneeActorId
-    ? boardMembers.find(m => m.actorId === todo.assigneeActorId)?.emoji
-    : null;
-
-  const isPrivate = todo.visibility === 'private';
-  const isOwner = todo.ownerActorId === actor?.id;
-
-  // Close menu on outside click or Escape
-  useEffect(() => {
-    if (!isMenuOpen) {
-      return;
-    }
-
-    function handlePointerDown(e: PointerEvent) {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(e.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(e.target as Node)
-      ) {
-        setMenuOpenForId(null);
-        setShowAssignPicker(false);
-      }
-    }
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setMenuOpenForId(null);
-        setShowAssignPicker(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isMenuOpen, setMenuOpenForId]);
-
-  return (
-    <li
-      className={`relative flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 rounded-lg border ${isFocusSection
-        ? "border-l-4 border-l-amber-400 dark:border-l-amber-500 border-t-zinc-200 border-r-zinc-200 border-b-zinc-200 dark:border-t-zinc-700 dark:border-r-zinc-700 dark:border-b-zinc-700"
-        : "border-zinc-200 dark:border-zinc-700"
-        }`}
-    >
-      {/* Done checkbox */}
-      <button
-        type="button"
-        onClick={() => onToggle(todo._id, todo.done)}
-        className="flex-shrink-0 w-6 h-6 rounded border-2 border-zinc-300 dark:border-zinc-600 flex items-center justify-center hover:border-blue-500 transition-colors touch-manipulation"
-        style={{ minWidth: "44px", minHeight: "44px" }}
-        aria-label={todo.done ? "Mark as not done" : "Mark as done"}
-      >
-        {todo.done && (
-          <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
-        )}
-      </button>
-
-      {/* Text */}
-      <span
-        className={`flex-1 text-base ${todo.done ? "text-zinc-400 line-through" : "text-zinc-900 dark:text-zinc-100"
-          }`}
-      >
-        {todo.text}
-      </span>
-
-      {/* Private indicator (display only) */}
-      {isPrivate && isOwner && (
-        <span className="text-zinc-400 text-sm flex-shrink-0" aria-label="Private">
-          🔒
-        </span>
-      )}
-
-      {/* Assignee emoji indicator (display only) */}
-      {assigneeEmoji && !todo.done && (
-        <span className="text-sm flex-shrink-0" aria-label="Assigned">
-          {assigneeEmoji}
-        </span>
-      )}
-
-      {/* Focus indicator (display only, not clickable) */}
-      {todo.focus && !todo.done && (
-        <span className="text-amber-500 text-sm flex-shrink-0" aria-label="Focused">
-          ★
-        </span>
-      )}
-
-      {/* Overflow menu button */}
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setMenuOpenForId(isMenuOpen ? null : todo._id)}
-        className="flex-shrink-0 p-2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors touch-manipulation"
-        style={{ minWidth: "44px", minHeight: "44px" }}
-        aria-label="More actions"
-        aria-expanded={isMenuOpen}
-      >
-        <span className="text-xl leading-none">⋯</span>
-      </button>
-
-      {/* Dropdown menu */}
-      {isMenuOpen && (
-        <div
-          ref={menuRef}
-          className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[160px]"
-        >
-          {/* Focus toggle */}
-          {!todo.done && (
-            <button
-              type="button"
-              onClick={() => {
-                onToggleFocus(todo._id, todo.focus);
-                setMenuOpenForId(null);
-              }}
-              className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
-            >
-              {todo.focus ? "Remove Focus" : "Add to Focus"}
-            </button>
-          )}
-
-          {/* Move up/down actions - only for non-done tasks */}
-          {!todo.done && canMoveUp && onMoveUp && (
-            <button
-              type="button"
-              onClick={onMoveUp}
-              className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
-            >
-              Move up
-            </button>
-          )}
-          {!todo.done && canMoveDown && onMoveDown && (
-            <button
-              type="button"
-              onClick={onMoveDown}
-              className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
-            >
-              Move down
-            </button>
-          )}
-
-          {/* Assignment actions - only for shared tasks */}
-          {!todo.done && !isPrivate && (
-            <>
-              {showAssignPicker ? (
-                <div className="border-t border-zinc-200 dark:border-zinc-700">
-                  <div className="text-xs text-zinc-500 px-3 pt-2 pb-1">Assign to:</div>
-                  {boardMembers.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-zinc-400">No members yet</div>
-                  ) : (
-                    boardMembers.map((member) => (
-                      <button
-                        key={member.actorId}
-                        type="button"
-                        onClick={() => onAssign(todo._id, member.actorId)}
-                        className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors ${todo.assigneeActorId === member.actorId
-                          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                          : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-                          }`}
-                      >
-                        <span className="text-base">{member.emoji}</span>
-                        <span>{member.name || "Member"}</span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowAssignPicker(true)}
-                  className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
-                >
-                  Assign to…
-                </button>
-              )}
-
-              {/* Unassign action */}
-              {todo.assigneeActorId && !showAssignPicker && (
-                <button
-                  type="button"
-                  onClick={() => onAssign(todo._id, null)}
-                  className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
-                >
-                  Unassign
-                </button>
-              )}
-            </>
-          )}
-
-          {/* Visibility toggle - only for owner or shared tasks */}
-          {!todo.done && (isOwner || !isPrivate) && (
-            <button
-              type="button"
-              onClick={() => onToggleVisibility(todo._id, todo.visibility)}
-              className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border-t border-zinc-200 dark:border-zinc-700"
-            >
-              {isPrivate ? "Make shared" : "Make private"}
-            </button>
-          )}
-
-          {/* Edit action */}
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpenForId(null);
-              onEdit(todo._id, todo.text);
-            }}
-            className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border-t border-zinc-200 dark:border-zinc-700"
-          >
-            Edit
-          </button>
-
-          {/* Delete action */}
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpenForId(null);
-              onRequestDelete(todo._id);
-            }}
-            className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors border-t border-zinc-200 dark:border-zinc-700"
-          >
-            Delete
-          </button>
-        </div>
-      )}
-    </li>
-  );
-}
-
