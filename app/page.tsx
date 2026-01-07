@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { TodoClient, TaskVisibility } from "@/lib/types";
-import { useActor } from "@/lib/useActor";
+import { TodoClient, TaskVisibility } from "@/lib/shared/types/todo";
+import { BoardMember } from "@/lib/shared/types/board";
+import { useActor } from "@/lib/hooks/useActor";
 import { ActorSetupModal } from "@/components/ActorSetupModal";
 import { Section } from "@/components/Section";
 import { TodoItem } from "@/components/TodoItem";
@@ -10,7 +11,6 @@ import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { EditTaskModal } from "@/components/EditTaskModal";
 import { AddTodoForm } from "@/components/AddTodoForm";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { BoardMember } from "@/components/types";
 
 const STORAGE_KEYS = {
   focusCollapsed: "whiteboard.sectionCollapsed.focus",

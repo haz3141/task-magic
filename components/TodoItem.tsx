@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { TodoClient, TaskVisibility } from "@/lib/types";
-import { BoardMember } from "./types";
+import { TodoClient, TaskVisibility } from "@/lib/shared/types/todo";
+import { BoardMember } from "@/lib/shared/types/board";
 
 interface TodoItemProps {
     todo: TodoClient;
@@ -91,8 +91,8 @@ export function TodoItem({
     return (
         <li
             className={`relative flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 rounded-lg border ${isFocusSection
-                    ? "border-l-4 border-l-amber-400 dark:border-l-amber-500 border-t-zinc-200 border-r-zinc-200 border-b-zinc-200 dark:border-t-zinc-700 dark:border-r-zinc-700 dark:border-b-zinc-700"
-                    : "border-zinc-200 dark:border-zinc-700"
+                ? "border-l-4 border-l-amber-400 dark:border-l-amber-500 border-t-zinc-200 border-r-zinc-200 border-b-zinc-200 dark:border-t-zinc-700 dark:border-r-zinc-700 dark:border-b-zinc-700"
+                : "border-zinc-200 dark:border-zinc-700"
                 }`}
         >
             {/* Done checkbox */}
@@ -207,8 +207,8 @@ export function TodoItem({
                                                 type="button"
                                                 onClick={() => onAssign(todo._id, member.actorId)}
                                                 className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors ${todo.assigneeActorId === member.actorId
-                                                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                                                        : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                                    : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
                                                     }`}
                                             >
                                                 <span className="text-base">{member.emoji}</span>
