@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import { Todo, todoToClient } from "@/lib/types";
-import { validateText, validatePriority } from "@/lib/validate";
-import { DEFAULT_BOARD_ID, initDefaultBoard } from "@/lib/board";
+import { connectToDatabase } from "@/lib/server/db/mongodb";
+import { Todo, todoToClient } from "@/lib/server/todos";
+import { validateText, validatePriority } from "@/lib/shared/validate/text";
+import { initDefaultBoard } from "@/lib/server/boards";
+import { DEFAULT_BOARD_ID } from "@/lib/shared/types/board";
 
 // GET /api/todos - List all todos for the default board, sorted: open first (createdAt desc), then done (doneAt desc)
 export async function GET() {

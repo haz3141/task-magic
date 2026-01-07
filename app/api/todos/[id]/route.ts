@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { connectToDatabase } from "@/lib/mongodb";
-import { Todo, todoToClient, TaskVisibility } from "@/lib/types";
-import { isValidObjectId, validatePriority, validateText } from "@/lib/validate";
+import { connectToDatabase } from "@/lib/server/db/mongodb";
+import { Todo, todoToClient } from "@/lib/server/todos";
+import { TaskVisibility } from "@/lib/shared/types/todo";
+import { isValidObjectId } from "@/lib/server/validate/objectId";
+import { validatePriority, validateText } from "@/lib/shared/validate/text";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
