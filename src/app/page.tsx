@@ -32,6 +32,7 @@ export default function Home() {
   const [confirmDeleteTodoId, setConfirmDeleteTodoId] = useState<string | null>(null);
   const [editTodoId, setEditTodoId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [todayStr, setTodayStr] = useState<string>("");
 
   // Load collapsed state from localStorage
   useEffect(() => {
@@ -63,8 +64,9 @@ export default function Home() {
     localStorage.setItem(STORAGE_KEYS.doneCollapsed, String(doneCollapsed));
   }, [doneCollapsed]);
 
-  // Fetch todos on mount
+  // Fetch todos on mount and set today's date (client-side to avoid hydration mismatch)
   useEffect(() => {
+    setTodayStr(new Date().toISOString().slice(0, 10));
     fetchTodos();
     fetchBoardMembers();
   }, []);
@@ -411,6 +413,36 @@ export default function Home() {
     handleAdd(event);
   }
 
+  // Handle setting due date
+  async function handleSetDueDate(id: string, dueDate: string | null) {
+    // Optimistic update
+    setTodos((prev) =>
+      prev.map((t) =>
+        t._id === id
+          ? { ...t, dueDate, updatedAt: new Date().toISOString() }
+          : t
+      )
+    );
+    setMenuOpenForId(null);
+
+    try {
+      const res = await fetch(`/api/todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dueDate }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update");
+      }
+      setError(null);
+    } catch {
+      // Revert on error
+      await fetchTodos();
+      setError("Failed to update due date");
+    }
+  }
+
   // Filter out private tasks not owned by current actor
   const visibleTodos = todos.filter((t) => {
     if (t.visibility === 'private' && t.ownerActorId !== actor?.id) {
@@ -443,6 +475,19 @@ export default function Home() {
       const bTime = b.doneAt ? new Date(b.doneAt).getTime() : new Date(b.updatedAt).getTime();
       return bTime - aTime;
     });
+
+  // Today section: overdue and due-today tasks (client-derived, not a section/bucket)
+  const todayTodos = todayStr
+    ? visibleTodos
+      .filter((t) => !t.done && t.dueDate && t.dueDate <= todayStr)
+      .sort((a, b) => {
+        // Overdue first, then by date
+        const aOverdue = a.dueDate! < todayStr ? 0 : 1;
+        const bOverdue = b.dueDate! < todayStr ? 0 : 1;
+        if (aOverdue !== bOverdue) return aOverdue - bOverdue;
+        return a.dueDate!.localeCompare(b.dueDate!);
+      })
+    : [];
 
   const openCount = focusTodos.length + laterTodos.length;
 
@@ -477,6 +522,41 @@ export default function Home() {
           <div className="text-center py-12 text-zinc-500">Loading...</div>
         ) : (
           <>
+            {/* Today Section - derived view, not a bucket */}
+            {todayTodos.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <span className="text-blue-600 dark:text-blue-400">📅</span>
+                  <span className="font-medium text-blue-600 dark:text-blue-400">Today</span>
+                  <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">
+                    {todayTodos.length}
+                  </span>
+                </div>
+                <ul className="mt-2 space-y-2">
+                  {todayTodos.map((todo) => (
+                    <TodoItem
+                      key={`today-${todo._id}`}
+                      todo={todo}
+                      actor={actor}
+                      boardMembers={boardMembers}
+                      onToggle={handleToggle}
+                      onToggleFocus={handleToggleFocus}
+                      onDelete={handleDelete}
+                      onRequestDelete={setConfirmDeleteTodoId}
+                      onEdit={(id, text) => { setEditTodoId(id); setEditText(text); }}
+                      onAssign={handleAssign}
+                      onToggleVisibility={handleToggleVisibility}
+                      onSetDueDate={handleSetDueDate}
+                      originLabel={todo.focus ? 'Focus' : 'Later'}
+                      menuOpenForId={menuOpenForId}
+                      setMenuOpenForId={setMenuOpenForId}
+                      todayStr={todayStr}
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Focus / Now Section */}
             <Section
               title="Focus / Now"
@@ -499,6 +579,7 @@ export default function Home() {
                   onEdit={(id, text) => { setEditTodoId(id); setEditText(text); }}
                   onAssign={handleAssign}
                   onToggleVisibility={handleToggleVisibility}
+                  onSetDueDate={handleSetDueDate}
                   onMoveUp={() => handleMove(todo._id, 'up', focusTodos)}
                   onMoveDown={() => handleMove(todo._id, 'down', focusTodos)}
                   canMoveUp={idx > 0}
@@ -506,6 +587,7 @@ export default function Home() {
                   isFocusSection
                   menuOpenForId={menuOpenForId}
                   setMenuOpenForId={setMenuOpenForId}
+                  todayStr={todayStr}
                 />
               ))}
             </Section>
@@ -531,12 +613,14 @@ export default function Home() {
                   onEdit={(id, text) => { setEditTodoId(id); setEditText(text); }}
                   onAssign={handleAssign}
                   onToggleVisibility={handleToggleVisibility}
+                  onSetDueDate={handleSetDueDate}
                   onMoveUp={() => handleMove(todo._id, 'up', laterTodos)}
                   onMoveDown={() => handleMove(todo._id, 'down', laterTodos)}
                   canMoveUp={idx > 0}
                   canMoveDown={idx < laterTodos.length - 1}
                   menuOpenForId={menuOpenForId}
                   setMenuOpenForId={setMenuOpenForId}
+                  todayStr={todayStr}
                 />
               ))}
             </Section>
@@ -562,8 +646,10 @@ export default function Home() {
                   onEdit={(id, text) => { setEditTodoId(id); setEditText(text); }}
                   onAssign={handleAssign}
                   onToggleVisibility={handleToggleVisibility}
+                  onSetDueDate={handleSetDueDate}
                   menuOpenForId={menuOpenForId}
                   setMenuOpenForId={setMenuOpenForId}
+                  todayStr={todayStr}
                 />
               ))}
             </Section>
