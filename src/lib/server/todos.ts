@@ -21,6 +21,7 @@ export interface Todo {
     createdAt: Date;
     updatedAt: Date;
     doneAt: Date | null;
+    dueDate?: Date | null;
 }
 
 // Handle missing fields gracefully for existing documents (backward compatibility)
@@ -39,5 +40,6 @@ export function todoToClient(todo: Partial<Todo> & { _id: ObjectId; text: string
         createdAt: todo.createdAt.toISOString(),
         updatedAt: todo.updatedAt.toISOString(),
         doneAt: todo.doneAt ? todo.doneAt.toISOString() : null,
+        dueDate: todo.dueDate ? todo.dueDate.toISOString().slice(0, 10) : todo.dueDate ?? null,
     };
 }
