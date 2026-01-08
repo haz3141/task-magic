@@ -21,4 +21,5 @@ export interface TodoClient {
     createdAt: string;
     updatedAt: string;
     doneAt: string | null;
+    dueDate?: string | null;
 }
