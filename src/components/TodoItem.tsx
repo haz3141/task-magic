@@ -216,7 +216,7 @@ export function TodoItem({
             {isMenuOpen && (
                 <div
                     ref={menuRef}
-                    className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+                    className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[160px] max-w-[calc(100vw-2rem)]"
                 >
                     {/* Focus toggle */}
                     {!todo.done && (
@@ -236,7 +236,11 @@ export function TodoItem({
                     {!todo.done && onSetDueDate && (
                         <>
                             {showDatePicker ? (
-                                <div className="border-t border-zinc-200 dark:border-zinc-700">
+                                <div
+                                    className="border-t border-zinc-200 dark:border-zinc-700"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
                                     <div className="text-xs text-zinc-500 px-3 pt-2 pb-1">Set date:</div>
                                     <button
                                         type="button"
@@ -263,7 +267,7 @@ export function TodoItem({
                                     <div className="px-3 py-2">
                                         <input
                                             type="date"
-                                            className="w-full text-sm border border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+                                            className="w-full min-w-0 max-w-full box-border text-sm border border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
                                             onChange={(e) => {
                                                 if (e.target.value) {
                                                     onSetDueDate(todo._id, e.target.value);
