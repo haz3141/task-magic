@@ -5,6 +5,7 @@ import { Todo, todoToClient } from "@/lib/server/todos";
 import { TaskVisibility } from "@/lib/shared/types/todo";
 import { isValidObjectId } from "@/lib/server/validate/objectId";
 import { validatePriority, validateText } from "@/lib/shared/validate/text";
+import { validateDueDate } from "@/lib/shared/validate/date";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -74,6 +75,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
                 return NextResponse.json({ error: validation.error }, { status: 400 });
             }
             updateData.text = validation.text;
+        }
+
+        // Handle dueDate field (can be YYYY-MM-DD string or null)
+        if (body.dueDate !== undefined) {
+            if (body.dueDate === null) {
+                updateData.dueDate = null;
+            } else if (validateDueDate(body.dueDate)) {
+                updateData.dueDate = new Date(body.dueDate + 'T00:00:00');
+            }
         }
 
         // Ensure at least one field is being updated besides updatedAt
