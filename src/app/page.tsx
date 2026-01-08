@@ -477,15 +477,25 @@ export default function Home() {
     });
 
   // Today section: overdue and due-today tasks (client-derived, not a section/bucket)
+  // Sorting: overdue first, Focus before Later, then canonical order
   const todayTodos = todayStr
     ? visibleTodos
       .filter((t) => !t.done && t.dueDate && t.dueDate <= todayStr)
       .sort((a, b) => {
-        // Overdue first, then by date
+        // 1) Overdue rank: overdue (< today) comes before due-today (=== today)
         const aOverdue = a.dueDate! < todayStr ? 0 : 1;
         const bOverdue = b.dueDate! < todayStr ? 0 : 1;
         if (aOverdue !== bOverdue) return aOverdue - bOverdue;
-        return a.dueDate!.localeCompare(b.dueDate!);
+
+        // 2) Section rank: Focus tasks come before Later tasks
+        const aFocus = a.focus ? 0 : 1;
+        const bFocus = b.focus ? 0 : 1;
+        if (aFocus !== bFocus) return aFocus - bFocus;
+
+        // 3) Canonical order: preserve Focus/Later list order
+        const aOrder = a.order ?? Date.parse(a.createdAt);
+        const bOrder = b.order ?? Date.parse(b.createdAt);
+        return aOrder - bOrder;
       })
     : [];
 
