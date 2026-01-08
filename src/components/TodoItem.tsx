@@ -199,21 +199,23 @@ export function TodoItem({
                 </span>
             )}
 
-            {/* Overflow menu button */}
-            <button
-                ref={buttonRef}
-                type="button"
-                onClick={() => setMenuOpenForId(isMenuOpen ? null : todo._id)}
-                className="flex-shrink-0 p-2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors touch-manipulation"
-                style={{ minWidth: "44px", minHeight: "44px" }}
-                aria-label="More actions"
-                aria-expanded={isMenuOpen}
-            >
-                <span className="text-xl leading-none">⋯</span>
-            </button>
+            {/* Overflow menu button - hidden for Today-derived view */}
+            {!originLabel && (
+                <button
+                    ref={buttonRef}
+                    type="button"
+                    onClick={() => setMenuOpenForId(isMenuOpen ? null : todo._id)}
+                    className="flex-shrink-0 p-2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors touch-manipulation"
+                    style={{ minWidth: "44px", minHeight: "44px" }}
+                    aria-label="More actions"
+                    aria-expanded={isMenuOpen}
+                >
+                    <span className="text-xl leading-none">⋯</span>
+                </button>
+            )}
 
-            {/* Dropdown menu */}
-            {isMenuOpen && (
+            {/* Dropdown menu - hidden for Today-derived view */}
+            {!originLabel && isMenuOpen && (
                 <div
                     ref={menuRef}
                     className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[160px] max-w-[calc(100vw-2rem)]"
