@@ -272,7 +272,7 @@ export function TodoItem({
                                         <input
                                             type="date"
                                             value={draftDueDate}
-                                            style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
+                                            style={{ maxWidth: '280px', width: '100%' }}
                                             className="text-sm border border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
                                             onChange={(e) => setDraftDueDate(e.target.value)}
                                             onBlur={() => {
