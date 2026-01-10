@@ -267,12 +267,13 @@ export function TodoItem({
                                     >
                                         Tomorrow
                                     </button>
-                                    <div className="px-3 py-2 overflow-hidden min-w-0">
+                                    <div style={{ overflow: 'hidden', maxWidth: '100%' }} className="px-3 py-2">
                                         <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Custom:</label>
                                         <input
                                             type="date"
                                             value={draftDueDate}
-                                            className="w-full min-w-0 max-w-full box-border text-sm border border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+                                            style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
+                                            className="text-sm border border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
                                             onChange={(e) => setDraftDueDate(e.target.value)}
                                             onBlur={() => {
                                                 if (draftDueDate) {
