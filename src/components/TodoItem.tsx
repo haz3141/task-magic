@@ -267,7 +267,7 @@ export function TodoItem({
                                     >
                                         Tomorrow
                                     </button>
-                                    <div className="px-3 py-2">
+                                    <div className="px-3 py-2 overflow-hidden min-w-0">
                                         <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Custom:</label>
                                         <input
                                             type="date"
