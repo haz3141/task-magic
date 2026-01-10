@@ -75,6 +75,7 @@ export function TodoItem({
     const isMenuOpen = menuOpenForId === todo._id;
     const [showAssignPicker, setShowAssignPicker] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [draftDueDate, setDraftDueDate] = useState("");
 
     // Find assignee's emoji
     const assigneeEmoji = todo.assigneeActorId
@@ -218,7 +219,7 @@ export function TodoItem({
             {!originLabel && isMenuOpen && (
                 <div
                     ref={menuRef}
-                    className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[160px] max-w-[calc(100vw-2rem)]"
+                    className="absolute right-0 top-full mt-1 z-10 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[160px] w-[min(22rem,calc(100vw-2rem))] overflow-hidden"
                 >
                     {/* Focus toggle */}
                     {!todo.done && (
@@ -266,16 +267,20 @@ export function TodoItem({
                                     >
                                         Tomorrow
                                     </button>
-                                    <div className="px-3 py-2">
+                                    <div style={{ overflow: 'hidden', maxWidth: '100%' }} className="px-3 py-2">
+                                        <label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Custom:</label>
                                         <input
                                             type="date"
-                                            className="w-full min-w-0 max-w-full box-border text-sm border border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
-                                            onChange={(e) => {
-                                                if (e.target.value) {
-                                                    onSetDueDate(todo._id, e.target.value);
-                                                    setMenuOpenForId(null);
-                                                    setShowDatePicker(false);
+                                            value={draftDueDate}
+                                            style={{ maxWidth: '280px', width: '100%' }}
+                                            className="text-sm border border-zinc-300 dark:border-zinc-600 rounded px-2 py-1 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+                                            onChange={(e) => setDraftDueDate(e.target.value)}
+                                            onBlur={() => {
+                                                if (draftDueDate) {
+                                                    onSetDueDate(todo._id, draftDueDate);
                                                 }
+                                                setMenuOpenForId(null);
+                                                setShowDatePicker(false);
                                             }}
                                         />
                                     </div>
@@ -296,7 +301,10 @@ export function TodoItem({
                             ) : (
                                 <button
                                     type="button"
-                                    onClick={() => setShowDatePicker(true)}
+                                    onClick={() => {
+                                        setDraftDueDate(todo.dueDate || "");
+                                        setShowDatePicker(true);
+                                    }}
                                     className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
                                 >
                                     {todo.dueDate ? "Change date…" : "Set date…"}
